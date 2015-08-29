@@ -2157,3 +2157,104 @@ main.registerCommand({
   if (options['delete'])
     Console.info('delete');
 });
+
+//////////////////////////////////////////////////////////////////////////
+
+
+// jrudio's desktop extension
+Desktop = {
+  Start: {},
+  Package: {},
+  shelljs: require('shelljs/global'),
+  prebuilt: null,
+  packager: null,
+  path: require('path'),
+  which: require('which'),
+  child: require('child_process'),
+  semver: require('semver'),
+  meteorToolPath: function () {
+    this.shelljs
+    var semver = this.semver
+    var p = this.path
+    var homeDir = process.env[(process.platform === 'win32' && 'USERPROFILE' || 'HOME')]
+    var meteorTool = p.join(homeDir, '.meteor', 'packages', 'meteor-tool')
+
+
+    // Either get the latest version of meteor-tool via comparing or grab it from meteor somehow
+    // var latestVersion = semver.compare()
+    var latestVersion = ls(meteorTool)[0]
+    // console.log(ls(meteorTool)[0])
+    // return latestVersion
+
+    // function getLatestVersion () {
+
+    // }
+    var dirMatchesMT = //
+
+    // Figure out which 'mt-*' to get
+    _.each(ls(meteorTool), function (dir) {
+      if (dirMatchesMT.test(dir)) {
+        meteorTool = p.join(meteorTool, dir)
+      }
+    })
+
+
+    // meteorTool = p.join(meteorTool, 'dev_bundle', 'lib', 'node_modules')
+
+    // Use the latest version of meteor-tool
+    meteorTool = p.join(meteorTool, latestVersion)
+    return meteorTool
+  },
+  loadModules: function () {
+    function cb (err, d) {
+      if (err) {
+        return Console.error(err)
+      }
+
+      if (d) {
+        Console.info(d)
+      } else {
+        Console.info('Success')
+      }
+    }
+
+    var meteorTool = this.meteorToolPath()
+    // this.prebuilt = require('electron-prebuilt')
+    var installElectron = this.child.spawn('npm', ['i', 'electron-prebuilt'], {cwd: meteorTool})
+
+    installElectron.on('data', cb)
+    installElectron.on('error', cb)
+  }
+}
+
+main.registerCommand({
+  name: 'add-desktop',
+  options: {
+    platform: { type: String, short: "p" }
+  },
+  maxArgs: 1,
+  hidden: false,
+  pretty: true,
+  catalogRefresh: new catalog.Refresh.Never()
+}, function (options) {
+  var p = options.platform || options.args[0]
+
+  if (!p) {
+    p = process.platform
+  }
+
+  Console.info(files.getCurrentToolsDir())
+  // Console.info(Desktop.meteorToolPath())
+
+  var npm = require('npm')
+
+  var spawn = require('child_process').spawn
+
+  try {
+    Console.info('Adding ' + p + ' to your project')
+    // Desktop.loadModules()
+  } catch (e) {
+    Console.error(e.message)
+    return 1
+  }
+});
