@@ -388,7 +388,7 @@ function doRunCommand (options) {
   if (parsedMobileServer.port) {
     mobileServer = mobileServer + ":" + parsedMobileServer.port;
   }
-  Console.info('Before Run')
+
   var runAll = require('./run-all.js');
   return runAll.run({
     projectContext: projectContext,
@@ -408,7 +408,8 @@ function doRunCommand (options) {
     oplogUrl: process.env.MONGO_OPLOG_URL,
     mobileServerUrl: mobileServer,
     once: options.once,
-    extraRunners: runners
+    extraRunners: runners,
+    electronCB: options.electronCB
   });
 }
 
@@ -2183,6 +2184,62 @@ main.registerCommand({
   try {
     // Console.info('Starting ' + p + ' to your project')
     Desktop.Electron.addFoldersAndFiles()
+  } catch (e) {
+    Console.error(e.message)
+    Console.error(e.code)
+    return 1
+  }
+
+  throw new main.WaitForExit
+});
+
+main.registerCommand(_.extend(
+  {name: 'run-desktop'},
+  runCommandOptions
+  ), function (options) {
+    var opts = {
+      electronCB: function () {
+        try {
+          Console.info('Starting your meteor app with Electron')
+          Desktop.Electron.start()
+        } catch (e) {
+          Console.error(e.message)
+
+          if (e.code) {
+            Console.error(e.code)
+          }
+
+          if (e.message === 'ELECTRON_APP_NOT_FOUND') {
+            Console.error()
+            Console.error('Please run ' + Console.command('"meteor add-desktop"') + ' before running this command')
+            Console.error()
+            process.exit(1)
+          }
+
+          return 1
+        }
+      }
+    }
+
+    doRunCommand(_.extend(opts, options))
+  }
+);
+
+main.registerCommand({
+  name: 'build-desktop',
+  options: {
+    electronPlatform: { type: String, short: "p" },
+    electronArch: { type: String, short: "a" },
+    electronVersion: { type: String, short: "l" }
+  },
+  requiresApp: true,
+  maxArgs: Infinity,
+  hidden: false,
+  pretty: true,
+  catalogRefresh: new catalog.Refresh.Never()
+}, function (options) {
+  try {
+    Desktop.Electron.packageApp(options)
   } catch (e) {
     Console.error(e.message)
     Console.error(e.code)
