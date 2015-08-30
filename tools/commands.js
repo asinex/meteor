@@ -2192,6 +2192,34 @@ main.registerCommand({
   throw new main.WaitForExit
 });
 
+main.registerCommand({
+  name: 'remove-desktop',
+  options: {
+    platform: { type: String, short: "p" }
+  },
+  requiresApp: true,
+  maxArgs: 1,
+  hidden: false,
+  pretty: true,
+  catalogRefresh: new catalog.Refresh.Never()
+}, function (options) {
+  var p = options.platform || options.args[0]
+
+  if (!p) {
+    p = process.platform
+  }
+
+  try {
+    Desktop.Electron.remove()
+  } catch (e) {
+    Console.error(e.message)
+    Console.error(e.code)
+    return 1
+  }
+
+  throw new main.WaitForExit
+});
+
 main.registerCommand(_.extend(
   {name: 'run-desktop'},
   runCommandOptions

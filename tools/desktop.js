@@ -156,6 +156,19 @@ Desktop.Electron.addFoldersAndFiles = function () {
   }
 }
 
+Desktop.Electron.remove = function (opts) {
+  Desktop.shelljs()
+
+  var electronPath = path.join(pwd(), '.electron')
+
+  if (test('-d', electronPath)) {
+    rm('-r', electronPath)
+    Console.info('Removed electron files')
+  } else {
+    Console.info('Nothing to remove')
+  }
+}
+
 Desktop.Electron.packageApp = function (opts) {
   var self = this
   var pkger = Desktop.packager()
