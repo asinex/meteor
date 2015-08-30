@@ -2182,8 +2182,7 @@ main.registerCommand({
   }
 
   try {
-    // Console.info('Starting ' + p + ' to your project')
-    Desktop.Electron.addFoldersAndFiles()
+    Desktop.Electron.init()
   } catch (e) {
     Console.error(e.message)
     Console.error(e.code)
@@ -2200,7 +2199,6 @@ main.registerCommand(_.extend(
     var opts = {
       electronCB: function () {
         try {
-          Console.info('Starting your meteor app with Electron')
           Desktop.Electron.start()
         } catch (e) {
           Console.error(e.message)

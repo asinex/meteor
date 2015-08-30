@@ -77,7 +77,17 @@ Desktop.Electron.start = function () {
   var spawn = child.spawn
   var electronAppPath = this.appPath
 
+  Console.info('Starting your meteor app with Electron')
+
   spawn(electron, [electronAppPath], {cwd: Desktop.nodeModulesPath(), stdio: 'inherit'})
+}
+
+Desktop.Electron.init = function () {
+  Desktop.prebuilt()
+  Desktop.packager()
+  Desktop.shelljs()
+
+  Desktop.Electron.addFoldersAndFiles()
 }
 
 
