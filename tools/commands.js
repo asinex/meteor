@@ -2185,7 +2185,11 @@ main.registerCommand({
     Desktop.Electron.init()
   } catch (e) {
     Console.error(e.message)
-    Console.error(e.code)
+
+    if (e.code) {
+      Console.error(e.code)
+    }
+
     return 1
   }
 
@@ -2213,7 +2217,11 @@ main.registerCommand({
     Desktop.Electron.remove()
   } catch (e) {
     Console.error(e.message)
-    Console.error(e.code)
+
+    if (e.code) {
+      Console.error(e.code)
+    }
+
     return 1
   }
 
@@ -2228,6 +2236,7 @@ main.registerCommand(_.extend(
       electronCB: function () {
         try {
           Desktop.Electron.start()
+          return 1
         } catch (e) {
           Console.error(e.message)
 
@@ -2239,7 +2248,6 @@ main.registerCommand(_.extend(
             Console.error()
             Console.error('Please run ' + Console.command('"meteor add-desktop"') + ' before running this command')
             Console.error()
-            process.exit(1)
           }
 
           return 1
@@ -2254,9 +2262,10 @@ main.registerCommand(_.extend(
 main.registerCommand({
   name: 'build-desktop',
   options: {
-    electronPlatform: { type: String, short: "p" },
-    electronArch: { type: String, short: "a" },
-    electronVersion: { type: String, short: "l" }
+    platform: { type: String, short: 'p', default: process.platform },
+    name: { type: String, short: 'n', default: 'MeteorDesktopApp' },
+    targetArch: { type: String, short: 'a', default: process.arch },
+    targetVersion: { type: String, default: '0.31.1' }
   },
   requiresApp: true,
   maxArgs: Infinity,
@@ -2265,10 +2274,17 @@ main.registerCommand({
   catalogRefresh: new catalog.Refresh.Never()
 }, function (options) {
   try {
+    Desktop.Electron.init()
     Desktop.Electron.packageApp(options)
+
+    return 0
   } catch (e) {
     Console.error(e.message)
-    Console.error(e.code)
+
+    if (e.code) {
+      Console.error(e.code)
+    }
+
     return 1
   }
 

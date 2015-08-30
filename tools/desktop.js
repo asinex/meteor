@@ -47,7 +47,6 @@ Desktop.checkModuleAndDownload = function (module, opt) {
       Console.info('Installing ' + module + ' now...')
       this.installModule(module)
     }
-    return 1
   }
 }
 
@@ -56,6 +55,10 @@ Desktop.installModule = function (module) {
   var spawn = child.spawn
 
   var c = spawn('npm', ['i', module], {cwd: this.nodeModulesPath(), stdio: 'inherit'})
+
+  c.on('finish', function () {
+    Console.info('Finished installing ' + module)
+  })
 
   c.on('close', function () {
     Console.info('Installed ' + module + '.')
@@ -175,14 +178,12 @@ Desktop.Electron.packageApp = function (opts) {
   var cwd = process.cwd()
   var out = path.join(cwd, '.electron', 'out')
 
-  // return Console.info(opts)
-
   pkger({
     dir: this.appPath,
-    platform: opts.electronPlatform || process.platform,
-    arch: opts.electronArch || process.arch,
-    name: opts.electronName || 'MeteorDesktopApp',
-    version: opts.electronVersion || '0.31.1',
+    platform: opts.platform,
+    arch: opts.targetArch,
+    name: opts.name,
+    version: opts.targetVersion,
     out: out
   }, function (err, appPath) {
     if (err) return Console.error(err)
@@ -191,7 +192,5 @@ Desktop.Electron.packageApp = function (opts) {
     Console.info('Packaged up your Meteor app to ' + appPath)
   })
 }
-
-
 
 module.exports = Desktop
