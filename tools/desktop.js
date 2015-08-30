@@ -41,7 +41,7 @@ Desktop.checkModuleAndDownload = function (module, opt) {
       return m
     }
   } catch (e) {
-    if (e.code === 'MODULE_NOT_FOUND') {
+    if (e.code === 'MODULE_NOT_FOUND' || e.code === 'ENOENT') {
       Console.info()
       Console.info(module + ' not found...')
       Console.info('Installing ' + module + ' now...')
