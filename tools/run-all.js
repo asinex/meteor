@@ -114,7 +114,7 @@ var Runner = function (options) {
 
 _.extend(Runner.prototype, {
   // XXX leave a pidfile and check if we are already running
-  start: function () {
+  start: function (options) {
     var self = this;
 
     // XXX: Include all runners, and merge parallel-launch patch
@@ -169,6 +169,10 @@ _.extend(Runner.prototype, {
     if (! self.stopped && ! self.quiet) {
       runLog.log("");
       runLog.log("App running at: " + self.rootUrl,  { arrow: true });
+
+      if (options.electronCB) {
+        options.electronCB()
+      }
 
       if (process.platform === "win32") {
         runLog.log("   Type Control-C twice to stop.");
@@ -329,7 +333,7 @@ exports.run = function (options) {
   });
 
   var runner = new Runner(runOptions);
-  runner.start();
+  runner.start(options);
   var result = fut.wait();
   runner.stop();
 

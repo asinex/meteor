@@ -23,6 +23,7 @@ var execFileSync = require('./utils.js').execFileSync;
 var Console = require('./console.js').Console;
 var projectContextModule = require('./project-context.js');
 var colonConverter = require('./colon-converter.js');
+var Desktop = require('./desktop.js');
 
 // The architecture used by MDG's hosted servers; it's the architecture used by
 // 'meteor deploy'.
@@ -407,7 +408,8 @@ function doRunCommand (options) {
     oplogUrl: process.env.MONGO_OPLOG_URL,
     mobileServerUrl: mobileServer,
     once: options.once,
-    extraRunners: runners
+    extraRunners: runners,
+    electronCB: options.electronCB
   });
 }
 
@@ -2156,4 +2158,93 @@ main.registerCommand({
     Console.info('url');
   if (options['delete'])
     Console.info('delete');
+});
+
+///////////////////////////////////////////////////////////////////////////////
+// jrudio's desktop extension
+///////////////////////////////////////////////////////////////////////////////
+
+main.registerCommand({
+  name: 'add-desktop',
+  options: {
+    platform: { type: String, short: "p" }
+  },
+  requiresApp: true,
+  maxArgs: 1,
+  hidden: false,
+  pretty: true,
+  catalogRefresh: new catalog.Refresh.Never()
+}, function (options) {
+  var p = options.platform || options.args[0]
+
+  if (!p) {
+    p = process.platform
+  }
+
+  try {
+    // Console.info('Starting ' + p + ' to your project')
+    Desktop.Electron.addFoldersAndFiles()
+  } catch (e) {
+    Console.error(e.message)
+    Console.error(e.code)
+    return 1
+  }
+
+  throw new main.WaitForExit
+});
+
+main.registerCommand(_.extend(
+  {name: 'run-desktop'},
+  runCommandOptions
+  ), function (options) {
+    var opts = {
+      electronCB: function () {
+        try {
+          Console.info('Starting your meteor app with Electron')
+          Desktop.Electron.start()
+        } catch (e) {
+          Console.error(e.message)
+
+          if (e.code) {
+            Console.error(e.code)
+          }
+
+          if (e.message === 'ELECTRON_APP_NOT_FOUND') {
+            Console.error()
+            Console.error('Please run ' + Console.command('"meteor add-desktop"') + ' before running this command')
+            Console.error()
+            process.exit(1)
+          }
+
+          return 1
+        }
+      }
+    }
+
+    doRunCommand(_.extend(opts, options))
+  }
+);
+
+main.registerCommand({
+  name: 'build-desktop',
+  options: {
+    electronPlatform: { type: String, short: "p" },
+    electronArch: { type: String, short: "a" },
+    electronVersion: { type: String, short: "l" }
+  },
+  requiresApp: true,
+  maxArgs: Infinity,
+  hidden: false,
+  pretty: true,
+  catalogRefresh: new catalog.Refresh.Never()
+}, function (options) {
+  try {
+    Desktop.Electron.packageApp(options)
+  } catch (e) {
+    Console.error(e.message)
+    Console.error(e.code)
+    return 1
+  }
+
+  throw new main.WaitForExit
 });
