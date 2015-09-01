@@ -2182,7 +2182,7 @@ main.registerCommand({
   }
 
   try {
-    Desktop.Electron.init()
+    Desktop.init(options.appDir)
   } catch (e) {
     Console.error(e.message)
 
@@ -2214,7 +2214,7 @@ main.registerCommand({
   }
 
   try {
-    Desktop.Electron.remove()
+    Desktop.remove(options.appDir)
   } catch (e) {
     Console.error(e.message)
 
@@ -2235,7 +2235,7 @@ main.registerCommand(_.extend(
     var opts = {
       electronCB: function () {
         try {
-          Desktop.Electron.start()
+          Desktop.start(options.appDir)
           return 1
         } catch (e) {
           Console.error(e.message)
@@ -2274,15 +2274,18 @@ main.registerCommand({
   catalogRefresh: new catalog.Refresh.Never()
 }, function (options) {
   try {
-    Desktop.Electron.init()
-    Desktop.Electron.packageApp(options)
-
-    return 0
+    Desktop.packageApp(options)
   } catch (e) {
     Console.error(e.message)
 
     if (e.code) {
       Console.error(e.code)
+    }
+
+    if (e.message === 'ELECTRON_APP_NOT_FOUND') {
+      Console.error()
+      Console.error('Please run ' + Console.command('"meteor add-desktop"') + ' before running this command')
+      Console.error()
     }
 
     return 1

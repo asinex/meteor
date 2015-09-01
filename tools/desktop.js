@@ -1,30 +1,21 @@
-var Console = require('./console.js').Console;
-var files = require('./files.js');
-var electronExample = require('./electron-main.js')
+var Future = require('fibers/future');
 var _ = require('underscore')
 var path = require('path')
 var child = require('child_process')
+var Console = require('./console.js').Console;
+var files = require('./files.js');
+var electronExample = require('./electron-main.js')
+var Desktop = {}
 
-var Desktop = {
-  Electron: {},
-  shelljs: function () {
-    return this.checkModuleAndDownload('shelljs', '/global')
-  },
-  prebuilt: function () {
-    return this.checkModuleAndDownload('electron-prebuilt')
-  },
-  packager: function () {
-    return this.checkModuleAndDownload('electron-packager')
-  }
-}
 
-Desktop.nodeModulesPath = function () {
-  return path.join(files.getCurrentToolsDir(), 'dev_bundle', 'lib', 'node_modules')
-}
+////////////////////////////////////////////////////
+// Test area for npm packages
+////////////////////////////////////////////////////
+var meteorToolPath = files.getCurrentToolsDir()
 
-Desktop.meteorToolPath = files.getCurrentToolsDir()
+var checkModuleAndDownload = function (module, opt) {
+  var future = new Future
 
-Desktop.checkModuleAndDownload = function (module, opt) {
   var _module = module
 
   if (opt) {
@@ -32,82 +23,104 @@ Desktop.checkModuleAndDownload = function (module, opt) {
   }
 
   try {
-    var m  = require(_module)
+    var m = require(_module)
 
     if (m) {
-      Console.info()
-      Console.info('Loading ' + module + '...')
-      Console.info()
-      return m
+      // Console.info()
+      // Console.info('Loading ' + module + '...')
+      // Console.info()
+      future.return(m)
     }
   } catch (e) {
     if (e.code === 'MODULE_NOT_FOUND' || e.code === 'ENOENT') {
+
       Console.info()
       Console.info(module + ' not found...')
       Console.info('Installing ' + module + ' now...')
-      this.installModule(module)
+
+      var m = installModule(module).wait()
+
+      // Console.info(m)
+
+      if (m) {
+        future.return(require(_module))
+      }
     }
   }
-}
 
-Desktop.installModule = function (module) {
-  var p = path
+  return future
+}.future()
+
+var nodeModulesPath = path.join(files.getCurrentToolsDir(), 'dev_bundle', 'lib', 'node_modules')
+
+var installModule = function (module) {
   var spawn = child.spawn
+  // Can't use stdio: inherit, because we need to resolve the future
+  var r = spawn('npm', ['i', module], {cwd: nodeModulesPath})
+  var future = new Future
 
-  var c = spawn('npm', ['i', module], {cwd: this.nodeModulesPath(), stdio: 'inherit'})
-
-  c.on('finish', function () {
-    Console.info('Finished installing ' + module)
+  r.stdout.on('data', function (d) {
+    // Console.info('stdout:data')
+    process.stdout.write(d)
   })
 
-  c.on('close', function () {
-    Console.info('Installed ' + module + '.')
-    Console.info('Please run command again')
-
+  r.stdout.on('close', function (code, signal) {
+    if (!code) {
+      Console.info('Successfully installed ' + module)
+      // Console.info('Requiring module...')
+      future.return(true)
+    } else {
+      Console.info('Something went wrong installing ' + module)
+      future.return(false)
+    }
   })
+
+  r.stderr.on('exit', function (code) {
+    Console.info('stderr:exit')
+    process.stderr.write(code)
+    if (!code) {
+      Console.info('Successfully installed ' + module)
+    } else {
+      Console.info('Something went wrong installing ' + module)
+    }
+  })
+
+  return future
 }
 
-Desktop.Electron.appPath = path.join(process.cwd(), '.electron', 'app')
+Desktop.start = function (appDir) {
+  if (!appDir) throw new Error('app-dir-not-provided')
+  checkModuleAndDownload('shelljs', '/global').wait().value
 
-Desktop.Electron.start = function () {
-  Desktop.shelljs()
+  appDir = path.join(appDir, '.electron', 'app')
 
-  var hasElectronFiles = !!test('-f', path.join(this.appPath, 'main.js'))
+  var hasElectronFiles = !!test('-f', path.join(appDir, 'main.js')) || !!test('-f', path.join(appDir, 'package.json'))
 
   if (!hasElectronFiles) throw new Error('ELECTRON_APP_NOT_FOUND')
 
-  var electron = Desktop.prebuilt()
+  var electron = checkModuleAndDownload('electron-prebuilt').wait().value
   var spawn = child.spawn
-  var electronAppPath = this.appPath
 
   Console.info('Starting your meteor app with Electron')
 
-  spawn(electron, [electronAppPath], {cwd: Desktop.nodeModulesPath(), stdio: 'inherit'})
+  spawn(electron, [appDir], {cwd: nodeModulesPath, stdio: 'inherit'})
 }
 
-Desktop.Electron.init = function () {
-  Desktop.prebuilt()
-  Desktop.packager()
-  Desktop.shelljs()
+Desktop.init = function (appDir) {
+  Console.info('Initializing npm modules')
+  checkModuleAndDownload('shelljs', '/global').wait().value
+  checkModuleAndDownload('electron-prebuilt').wait().value
+  checkModuleAndDownload('electron-packager').wait().value
 
-  Desktop.Electron.addFoldersAndFiles()
-}
-
-
-Desktop.Electron.addFoldersAndFiles = function () {
-  // Include shelljs
-  Desktop.shelljs()
-  var p = path
-  var nodeModulesPath = Desktop.nodeModulesPath()
-  var toolPath = Desktop.meteorToolPath
+  var desktopAdded = true
 
   var electron = {}
-  electron.dir = p.join(pwd(), '.electron')
-  electron.appPath = p.join(electron.dir, 'app'),
-  electron.outPath = p.join(electron.dir, 'out'),
-  electron.mainFilePath = p.join(electron.appPath, 'main.js'),
-  electron.packageFilePath = p.join(electron.appPath, 'package.json')
-
+  electron.dir = path.join(appDir, '.electron')
+  electron.appPath = path.join(electron.dir, 'app'),
+  electron.outPath = path.join(electron.dir, 'out'),
+  electron.mainFilePath = path.join(electron.appPath, 'main.js'),
+  electron.packageFilePath = path.join(electron.appPath, 'package.json')
+ 
   var defaultOptions = {
     name: 'your-app',
     version: '0.1.0',
@@ -116,6 +129,7 @@ Desktop.Electron.addFoldersAndFiles = function () {
 
   // .electron
   if (!test('-d', electron.dir)) {
+    desktopAdded = false
     Console.info()
     Console.info('Creating electron directory in project root...')
     Console.info()
@@ -124,6 +138,7 @@ Desktop.Electron.addFoldersAndFiles = function () {
 
   // .electron/out/
   if (!test('-d', electron.outPath)) {
+    desktopAdded = false
     Console.info()
     Console.info('Creating electron output directory in project root...')
     Console.info()
@@ -132,6 +147,7 @@ Desktop.Electron.addFoldersAndFiles = function () {
 
   // .electron/app/
   if (!test('-d', electron.appPath)) {
+    desktopAdded = false
     Console.info()
     Console.info('Creating electron app directory in project root...')
     Console.info()
@@ -140,6 +156,7 @@ Desktop.Electron.addFoldersAndFiles = function () {
 
   // .electron/app/main.js
   if (!test('-f', electron.mainFilePath)) {
+    desktopAdded = false
     Console.info()
     Console.info('Setting up Electron main.js')
     Console.info()
@@ -150,6 +167,7 @@ Desktop.Electron.addFoldersAndFiles = function () {
 
   // .electron/app/package.json
   if (!test('-f', electron.packageFilePath)) {
+    desktopAdded = false
     Console.info()
     Console.info('Setting up Electron package.json')
     Console.info()
@@ -157,29 +175,47 @@ Desktop.Electron.addFoldersAndFiles = function () {
 
     j.to(electron.packageFilePath)
   }
+
+  if (desktopAdded) {
+    Console.info('Desktop is already added')
+  }
 }
 
-Desktop.Electron.remove = function (opts) {
-  Desktop.shelljs()
-
-  var electronPath = path.join(pwd(), '.electron')
+Desktop.remove = function (appDir) {
+  checkModuleAndDownload('shelljs', '/global').wait().value
+  var electronPath = path.join(appDir, '.electron')
 
   if (test('-d', electronPath)) {
-    rm('-r', electronPath)
-    Console.info('Removed electron files')
+    Console.warn()
+    Console.labelWarn('This will delete .electron/ and its contents. Are you sure you want to continue? (Y/N)')
+
+    process.stdin.setEncoding('utf8')
+    process.stdin.on('data', function (text) {
+      if (/y/i.test(text)) {
+        rm('-rf', electronPath)
+        Console.info('Removed electron files')
+        process.exit(1)
+      } else if (/n/i.test(text)) {
+        process.exit(1)
+      }
+    })
   } else {
     Console.info('Nothing to remove')
   }
 }
 
-Desktop.Electron.packageApp = function (opts) {
-  var self = this
-  var pkger = Desktop.packager()
-  var cwd = process.cwd()
-  var out = path.join(cwd, '.electron', 'out')
+Desktop.packageApp = function (opts) {
+  var packager = checkModuleAndDownload('electron-packager').wait().value
+  var test = checkModuleAndDownload('shelljs').wait().value.test
+  var out = path.join(opts.appDir, '.electron', 'out')
+  var src = path.join(opts.appDir, '.electron', 'app')
 
-  pkger({
-    dir: this.appPath,
+  var hasElectronFolders = !!test('-d', out) && !!test('-d', src)
+
+  if (!hasElectronFolders) throw new Error('ELECTRON_APP_NOT_FOUND')
+
+  packager({
+    dir: src,
     platform: opts.platform,
     arch: opts.targetArch,
     name: opts.name,
