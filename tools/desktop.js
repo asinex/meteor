@@ -51,12 +51,17 @@ var checkModuleAndDownload = function (module, opt) {
   return future
 }.future()
 
-var nodeModulesPath = path.join(files.getCurrentToolsDir(), 'dev_bundle', 'lib', 'node_modules')
+var nodeModulesPath = (function () {
+  var toolsDir = files.getCurrentToolsDir()
+
+  return process.platform === 'win32' && files.convertToWindowsPath(toolsDir) || toolsDir
+})()
 
 var installModule = function (module) {
   var spawn = child.spawn
+  var npm = process.platform === 'win32' && 'npm.cmd' || 'npm'
   // Can't use stdio: inherit, because we need to resolve the future
-  var r = spawn('npm', ['i', module], {cwd: nodeModulesPath})
+  var r = spawn(npm, ['i', module], {cwd: nodeModulesPath})
   var future = new Future
 
   r.stdout.on('data', function (d) {
@@ -75,7 +80,7 @@ var installModule = function (module) {
     }
   })
 
-  r.stderr.on('exit', function (code) {
+  r.stderr.on('error', function (code) {
     Console.info('stderr:exit')
     process.stderr.write(code)
     if (!code) {
@@ -90,6 +95,7 @@ var installModule = function (module) {
 
 Desktop.start = function (appDir) {
   if (!appDir) throw new Error('app-dir-not-provided')
+  appDir = process.platform === 'win32' && files.convertToWindowsPath(appDir) || appDir
   checkModuleAndDownload('shelljs', '/global').wait().value
 
   appDir = path.join(appDir, '.electron', 'app')
@@ -107,7 +113,9 @@ Desktop.start = function (appDir) {
 }
 
 Desktop.init = function (appDir) {
+  appDir = process.platform === 'win32' && files.convertToWindowsPath(appDir) || appDir
   Console.info('Initializing npm modules')
+
   checkModuleAndDownload('shelljs', '/global').wait().value
   checkModuleAndDownload('electron-prebuilt').wait().value
   checkModuleAndDownload('electron-packager').wait().value
@@ -182,7 +190,11 @@ Desktop.init = function (appDir) {
 }
 
 Desktop.remove = function (appDir) {
+  if (!appDir) throw new Error('app-dir-not-provided')
+  appDir = process.platform === 'win32' && files.convertToWindowsPath(appDir) || appDir
+
   checkModuleAndDownload('shelljs', '/global').wait().value
+
   var electronPath = path.join(appDir, '.electron')
 
   if (test('-d', electronPath)) {
@@ -205,10 +217,13 @@ Desktop.remove = function (appDir) {
 }
 
 Desktop.packageApp = function (opts) {
+  var appDir = process.platform === 'win32' && files.convertToWindowsPath(opts.appDir) || opts.appDir
+
+
   var packager = checkModuleAndDownload('electron-packager').wait().value
   var test = checkModuleAndDownload('shelljs').wait().value.test
-  var out = path.join(opts.appDir, '.electron', 'out')
-  var src = path.join(opts.appDir, '.electron', 'app')
+  var out = path.join(appDir, '.electron', 'out')
+  var src = path.join(appDir, '.electron', 'app')
 
   var hasElectronFolders = !!test('-d', out) && !!test('-d', src)
 
