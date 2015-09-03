@@ -2266,6 +2266,7 @@ main.registerCommand({
     name: { type: String, short: 'n', default: 'MeteorDesktopApp' },
     targetArch: { type: String, short: 'a', default: process.arch },
     targetVersion: { type: String, default: '0.31.1' },
+    out: { type: String },
     all: { type: Boolean, default: false },
     icon: { type: String },
     'app-bundle-version': { type: String },

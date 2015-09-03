@@ -222,7 +222,7 @@ Desktop.packageApp = function (opts) {
 
   var packager = checkModuleAndDownload('electron-packager').wait().value
   var test = checkModuleAndDownload('shelljs').wait().value.test
-  var out = path.join(appDir, '.electron', 'out')
+  var out = opts.out || path.join(appDir, '.electron', 'out')
   var src = path.join(appDir, '.electron', 'app')
 
   var hasElectronFolders = !!test('-d', out) && !!test('-d', src)
@@ -250,8 +250,6 @@ Desktop.packageApp = function (opts) {
       overwrite: opts.overwrite,
       'version-string': opts['version-string']
     }
-
-  Console.info(opts)
 
   packager(packagerOptions, function (err, appPath) {
     if (err) return Console.error(err)
