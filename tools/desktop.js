@@ -229,18 +229,39 @@ Desktop.packageApp = function (opts) {
 
   if (!hasElectronFolders) throw new Error('ELECTRON_APP_NOT_FOUND')
 
-  packager({
-    dir: src,
-    platform: opts.platform,
-    arch: opts.targetArch,
-    name: opts.name,
-    version: opts.targetVersion,
-    out: out
-  }, function (err, appPath) {
+    var packagerOptions = {
+      dir: src,
+      platform: opts.platform,
+      arch: opts.targetArch,
+      name: opts.name,
+      version: opts.targetVersion,
+      all: opts.all,
+      overwrite: opts.overwrite,
+      out: out,
+      icon: opts.icon,
+      'app-bundle-version': opts['app-bundle-version'],
+      'app-version': opts['app-version'],
+      cache: opts.cache,
+      'helper-bundle-id': opts['helper-bundle-id'],
+      ignore: opts.ignore,
+      prune: opts.prune,
+      asar: opts.asar,
+      sign: opts.sign,
+      overwrite: opts.overwrite,
+      'version-string': opts['version-string']
+    }
+
+  Console.info(opts)
+
+  packager(packagerOptions, function (err, appPath) {
     if (err) return Console.error(err)
 
+    if (!appPath.length) return
+
     Console.info()
-    Console.info('Packaged up your Meteor app to ' + appPath)
+    _.each(appPath, function (dir) {
+      Console.info('Packaged up your Meteor app to ' + dir)
+    })
   })
 }
 
